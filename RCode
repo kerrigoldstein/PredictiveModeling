@@ -1,0 +1,104 @@
+x <- read.csv("/Users/kerrigoldstein/Documents/UIC MPH Fall 2020/BSTT 527/yrbstopicfinal.csv")
+
+summary(x)
+dim(x)
+str(x)
+
+x$obese=as.factor(x$obese)
+
+names(x)
+
+res <- cor(x)
+round(res, 2)
+
+install.packages("corrplot")
+library(corrplot)
+corrplot(res)
+
+x$obese=as.factor(x$obese)
+relevel(x$obese,ref="0")
+fit=glm(obese~.,family=binomial(link=logit),data=x)
+summary(fit)
+
+install.packages('zoo')
+library(lmtest)
+
+#0 female
+#1 male
+
+# Logistic regression
+library(pROC)
+x$prob<-fit$fit
+x$prob
+obese
+g <- roc(obese~prob, data=x, plot=TRUE)
+plot.roc(g,print.thres="best",print.auc=TRUE)
+
+ct<-table(round(fit$fit),x$obese)
+ct
+diag(ct)
+sum(diag(ct))/nrow(x) # classification accuracy
+1-sum(diag(ct))/nrow(x)
+table(x$obese)
+
+# create training and testing data
+set.seed(123)
+train<-sort(sample(1:nrow(x),round(.8*nrow(x))))
+xtrain<-x[train,]
+xtest<-x[-train,]
+names(xtrain)
+head(xtrain)
+
+# Naive Bayes
+library(e1071)
+naivefit <- naiveBayes(obese ~ ., data = xtrain) 
+
+naivepred <-predict(naivefit,xtrain)
+
+head(naivepred)
+
+ct<-table(naivepred, xtrain$obese)
+ct
+sum(diag(ct))/nrow(xtrain)
+1-sum(diag(ct))/nrow(xtrain)
+
+#Testing data
+naivefit <- naiveBayes(obese ~ ., data = xtest) 
+naivepred <-predict(naivefit, xtest)
+
+head(naivepred)
+
+ct<-table(naivepred, xtest$obese)
+ct
+sum(diag(ct))/nrow(xtest)
+1-sum(diag(ct))/nrow(xtest)
+
+
+## "lower"  value of catgorical variable is the reference. 
+# If not, use relevel() before creating model.matrix 
+
+# Decision Tree
+treex<-read.csv("/Users/kerrigoldstein/Documents/UIC MPH Fall 2020/BSTT 527/yrbstopicfinal.csv")
+install.packages('tree')
+library(tree)
+str(treex)
+
+treex<-na.omit(treex)
+names(treex)
+treex$obese<-as.factor(treex$obese)
+
+trc<-tree.control(nrow(treex), mincut = 2, minsize = 5, mindev = 0.004)
+
+tree.obese<-tree(obese~.,treex,control=trc)
+summary(tree.obese)
+tree.obese
+dev.off()
+plot(tree.obese)
+text(tree.obese,pretty=0,cex=.7)
+
+ptsh = predict(tree.obese,newdata=treex,type="class")
+
+ct=table(ptsh, treex[,"obese"])
+ct
+sum(diag(ct))/nrow(treex)
+1-sum(diag(ct))/nrow(treex)
